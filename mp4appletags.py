@@ -34,9 +34,14 @@ def openurl(urls):
 
 def getDataFromApple(opts, movieName, movieYear):
     """docstring for getDataFromApple"""
+    if opts.verbose > 0:
+        print "  Retrieving data from Apple for: %s - %s" % (movieName, movieYear)
+    #end if verbose
+
     if opts.verbose == 2:
-        print "!!Looking up data for: %s - %s" % (movieName, movieYear)
+        print "  Looking up data for: %s - %s" % (movieName, movieYear)
     #end if debug
+
     movieResults = itunes.search_movie(movieName.decode('utf-8'))
     movies = []
     
@@ -45,35 +50,35 @@ def getDataFromApple(opts, movieName, movieYear):
     #end if debug
     
     #we got zero hits, try replacing some commonly used replacement-characters due to filename illegality
-    if len(movieResults) < 1:
-        if movieName.count(';'):
-            tempMovieName = movieName.replace(';', ':')
-            return getDataFromApple(opts, tempMovieName, movieYear)
-        elif movieName.count('_'):
-            tempMovieName = movieName.replace('_', ' ')
-            return getDataFromApple(opts, tempMovieName, movieYear)
-        else:
-            #last ditch attempt, search for movies by longest word in movie name as long as more then one word
-            if len(movieName.split()) < 2:
-                return movies
-            #end if len
-            movieNameLongestWord = max(movieName.split(), key=len)
-            longestWordMovies = getDataFromApple(opts, movieNameLongestWord, movieYear)
-            if opts.interactive or len(longestWordMovies) == 1:
-                if opts.verbose == 2:
-                    print "!!Using search result(s) based upon longest word search"
-                #end if debug
-                return longestWordMovies
-            #end if interactive
-            return movies
-        #end if count
-    #end if len
+    #if len(movieResults) < 1:
+        #if movieName.count(';'):
+            #tempMovieName = movieName.replace(';', ':')
+            #return getDataFromApple(opts, tempMovieName, movieYear)
+        #elif movieName.count('_'):
+            #tempMovieName = movieName.replace('_', ' ')
+            #return getDataFromApple(opts, tempMovieName, movieYear)
+        #else:
+            ##last ditch attempt, search for movies by longest word in movie name as long as more then one word
+            #if len(movieName.split()) < 2:
+                #return movies
+            ##end if len
+            #movieNameLongestWord = max(movieName.split(), key=len)
+            #longestWordMovies = getDataFromApple(opts, movieNameLongestWord, movieYear)
+            #if opts.interactive or len(longestWordMovies) == 1:
+                #if opts.verbose == 2:
+                    #print "!!Using search result(s) based upon longest word search"
+                ##end if debug
+                #return longestWordMovies
+            ##end if interactive
+            #return movies
+        ##end if count
+    ##end if len
     
     if movieYear != "":
         for movieResult in movieResults:
             #check that the year tag in the file name matches with the release date, otherwise not the movie we are looking for
             if opts.verbose == 2:
-                print "!!Potential hit: %s" % movieResult.name
+                print "!!Potential hit: %s, year: %s" % (movieResult.name, str(movieResult.release_date))
             if movieResult.kind != "feature-movie":
                 continue
             if movieResult.release_date:
@@ -81,17 +86,29 @@ def getDataFromApple(opts, movieName, movieYear):
                     movie = itunes.lookup(movieResult.id)
                     movies.append(movie)
         #end for movie
+        if len(movies) < 1:
+            print "!!No results were found matching your year: %s" % movieYear
+            for movieResult in movieResults:
+                if opts.verbose == 2:
+                    print "!!Potential hit: %s, year: %s" % (movieResult.name, str(movieResult.release_date))
+                if movieResult.kind != "feature-movie":
+                    continue
+                if movieResult.release_date:
+                    movie = itunes.lookup(movieResult.id)
+                    movies.append(movie)
+            #end for movie
     else:
         for movieResult in movieResults:
             #check that the year tag in the file name matches with the release date, otherwise not the movie we are looking for
             if opts.verbose == 2:
-                print "!!Potential hit: %s" % movieResult.name
+                print "!!Potential hit: %s, year: %s" % (movieResult.name, str(movieResult.release_date))
             if movieResult.kind != "feature-movie":
                 continue
             if movieResult.release_date:
                 movie = itunes.lookup(movieResult.id)
                 movies.append(movie)
         #end for movie
+
     return movies
 #end getDataFromApple
 
@@ -260,9 +277,6 @@ def main():
         
         #============ TAG DATA ============ 
         #download information from TMDb
-        if opts.verbose > 0:
-            print "  Retrieving data from Apple"
-        #end if verbose
         movies = getDataFromApple(opts, movieName, movieYear)
         
         if len(movies) == 0:
@@ -283,20 +297,26 @@ def main():
             #end for movie in movies
      
             #allow user to preview movies
-            print "  Example of listing: 0 2 4, <CR> for all"
+            print "  Example of listing: 0 2 4, <A> for all"
             moviePreviewRequestNumbers = raw_input("  List Movies to Preview: ")
             moviePreviewUrls = []
             if moviePreviewRequestNumbers:
-                moviePreviewRequests = moviePreviewRequestNumbers.split()
-    
-                for artworkPreviewRequest in moviePreviewRequests:
-                    moviePreviewUrls.append(moviesPreview[int(artworkPreviewRequest)])
-            else:
-                for i in range(0, len(moviesPreview)):
-                    moviePreviewUrls.append(moviesPreview[i])
+                if moviePreviewRequestNumbers == "a":
+                    for i in range(0, len(moviesPreview)):
+                        moviePreviewUrls.append(moviesPreview[i])
+                    #end for
+                else:
+                    moviePreviewRequests = moviePreviewRequestNumbers.split()
+        
+                    for artworkPreviewRequest in moviePreviewRequests:
+                        moviePreviewUrls.append(moviesPreview[int(artworkPreviewRequest)])
+            #else:
+                #for i in range(0, len(moviesPreview)):
+                    #moviePreviewUrls.append(moviesPreview[i])
 
             #end for artworkPreviewRequest
-            openurl(moviePreviewUrls)
+            if len(moviePreviewUrls) > 0:
+                openurl(moviePreviewUrls)
 
             #ask user what movie he wants to use
             movieChoice = int(raw_input("  Select correct title: "))
